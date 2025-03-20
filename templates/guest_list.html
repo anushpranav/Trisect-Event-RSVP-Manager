@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Guest List - {{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="guest-list-container">
+    <div class="page-header">
+        <h1>{{ event.title }} - Guest List</h1>
+        <div class="event-meta">
+            <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            <p><strong>Location:</strong> {{ event.location }}</p>
+            <p><strong>Organizer:</strong> {{ current_user.name }}</p>
+        </div>
+    </div>
+    
+    <div class="stats-summary">
+        <div class="stat-box confirmed">
+            <h3>Confirmed</h3>
+            <p class="stat-number">{{ event.get_rsvp_stats()['confirmed'] }}</p>
+        </div>
+        <div class="stat-box pending">
+            <h3>Pending</h3>
+            <p class="stat-number">{{ event.get_rsvp_stats()['pending'] }}</p>
+        </div>
+        <div class="stat-box declined">
+            <h3>Declined</h3>
+            <p class="stat-number">{{ event.get_rsvp_stats()['declined'] }}</p>
+        </div>
+        <div class="stat-box total">
+            <h3>Total Attending</h3>
+            <p class="stat-number">{{ event.get_rsvp_stats()['total_attending'] }}</p>
+            <small>(including plus ones)</small>
+        </div>
+    </div>
+
+    <div class="actions-bar">
+        <button onclick="showAddGuestModal()" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Guest
+        </button>
+        <button onclick="exportGuestList()" class="btn btn-secondary">
+            <i class="fas fa-download"></i> Export Guest List
+        </button>
+        <button onclick="sendBulkReminders()" class="btn btn-secondary">
+            <i class="fas fa-bell"></i> Send Reminders
+        </button>
+    </div>
+
+    <div class="guest-list-wrapper">
+        <div class="filters">
+            <div class="search-box">
+                <input type="text" id="guestSearch" placeholder="Search guests..." onkeyup="filterGuests()">
+            </div>
+            <div class="filter-options">
+                <select id="statusFilter" onchange="filterGuests()">
+                    <option value="all">All Statuses</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="pending">Pending</option>
+                    <option value="declined">Declined</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="guests-table" id="guestsTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Name ↕</th>
+                        <th onclick="sortTable(1)">Email ↕</th>
+                        <th onclick="sortTable(2)">Status ↕</th>
+                        <th onclick="sortTable(3)">Plus Ones ↕</th>
+                        <th onclick="sortTable(4)">Last Updated ↕</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for guest in guests %}
+                    <tr data-guest-id="{{ guest.id }}" data-status="{{ guest.status }}">
+                        <td>{{ guest.name }}</td>
+                        <td>{{ guest.email }}</td>
+                        <td>
+                            <span class="status-badge status-{{ guest.status }}">
+                                {{ guest.status|title }}
+                            </span>
+                        </td>
+                        <td>{{ guest.plusOneCount }}</td>
+                        <td>{{ guest.updatedAt.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <div class="guest-actions">
+                                <button onclick="viewQRCode({{ guest.id }})" class="btn btn-icon" title="View QR Code">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                                <button onclick="copyRSVPLink('{{ url_for('routes.rsvp_page', token=guest.uniqueAccessToken, _external=True) }}')" 
+                                        class="btn btn-icon" title="Copy RSVP Link">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                                <button onclick="editGuest({{ guest.id }})" class="btn btn-icon" title="Edit Guest">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteGuest({{ guest.id }})" class="btn btn-icon btn-danger" title="Delete Guest">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Guest Modal -->
+<div id="addGuestModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Guest</h2>
+            <span class="close" onclick="closeModal('addGuestModal')">&times;</span>
+        </div>
+        <form id="addGuestForm" onsubmit="return addGuest(event)">
+            <div class="form-group">
+                <label for="guestName">Name *</label>
+                <input type="text" id="guestName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="guestEmail">Email *</label>
+                <input type="email" id="guestEmail" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="guestPhone">Phone (optional)</label>
+                <input type="tel" id="guestPhone" name="phone">
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="sendInvite" name="sendInvite" checked>
+                <label for="sendInvite">Send invitation email immediately</label>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Add Guest</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addGuestModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div id="qrModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Guest QR Code</h2>
+            <span class="close" onclick="closeModal('qrModal')">&times;</span>
+        </div>
+        <div class="qr-code-container">
+            <div id="qrCodeImage"></div>
+        </div>
+        <div class="modal-actions">
+            <a id="downloadQrLink" class="btn btn-primary">
+                <i class="fas fa-download"></i> Download QR Code
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Delete Guest</h2>
+            <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+        </div>
+        <p>Are you sure you want to delete this guest? This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            <button onclick="closeModal('deleteModal')" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentGuestId = null;
+
+function showAddGuestModal() {
+    document.getElementById('addGuestModal').style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+async function addGuest(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        sendInvite: formData.get('sendInvite') === 'on'
+    };
+
+    try {
+        const response = await fetch(`/event/{{ event.id }}/guests`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showToast('Guest added successfully!', 'success');
+            location.reload();
+        } else {
+            showToast(result.error || 'Failed to add guest', 'error');
+        }
+    } catch (error) {
+        showToast('An error occurred', 'error');
+    }
+
+    closeModal('addGuestModal');
+    return false;
+}
+
+function viewQRCode(guestId) {
+    const modal = document.getElementById('qrModal');
+    const qrImage = document.getElementById('qrCodeImage');
+    const downloadLink = document.getElementById('downloadQrLink');
+    
+    qrImage.innerHTML = '<div class="loading">Loading QR Code...</div>';
+    modal.style.display = 'block';
+    
+    fetch(`/event/{{ event.id }}/guest/${guestId}/qr`)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            qrImage.innerHTML = `<img src="${url}" alt="RSVP QR Code">`;
+            downloadLink.href = `/event/{{ event.id }}/guest/${guestId}/qr/download`;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            qrImage.innerHTML = '<div class="error">Failed to load QR code</div>';
+        });
+}
+
+function copyRSVPLink(link) {
+    navigator.clipboard.writeText(link)
+        .then(() => showToast('RSVP link copied to clipboard!', 'success'))
+        .catch(() => showToast('Failed to copy link', 'error'));
+}
+
+function deleteGuest(guestId) {
+    currentGuestId = guestId;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+async function confirmDelete() {
+    if (!currentGuestId) return;
+    
+    try {
+        const response = await fetch(`/event/{{ event.id }}/guest/${currentGuestId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showToast('Guest deleted successfully', 'success');
+            document.querySelector(`tr[data-guest-id="${currentGuestId}"]`).remove();
+        } else {
+            showToast('Failed to delete guest', 'error');
+        }
+    } catch (error) {
+        showToast('An error occurred', 'error');
+    }
+    
+    closeModal('deleteModal');
+    currentGuestId = null;
+}
+
+function filterGuests() {
+    const searchText = document.getElementById('guestSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('#guestsTable tbody tr');
+
+    rows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        const email = row.cells[1].textContent.toLowerCase();
+        const status = row.dataset.status;
+        
+        const matchesSearch = name.includes(searchText) || email.includes(searchText);
+        const matchesStatus = statusFilter === 'all' || status === statusFilter;
+        
+        row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+    });
+}
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('guestsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const aValue = a.cells[columnIndex].textContent.trim();
+        const bValue = b.cells[columnIndex].textContent.trim();
+        return aValue.localeCompare(bValue);
+    });
+    
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    document.getElementById('toastContainer').appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }, 100);
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const modals = document.getElementsByClassName('modal');
+    for (let modal of modals) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+}
+
+// Export guest list
+function exportGuestList() {
+    window.location.href = `/event/{{ event.id }}/guests/export`;
+}
+
+// Send bulk reminders
+async function sendBulkReminders() {
+    try {
+        const response = await fetch(`/event/{{ event.id }}/guests/remind`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        showToast(result.message, result.success ? 'success' : 'error');
+    } catch (error) {
+        showToast('Failed to send reminders', 'error');
+    }
+}
+</script>
+{% endblock %}

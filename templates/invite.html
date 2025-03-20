@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>You're Invited!</h1>
+        </div>
+        
+        <p>Dear {{ guest.name }},</p>
+        
+        <p>You are cordially invited to:</p>
+        <h2>{{ event.title }}</h2>
+        
+        <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y at %I:%M %p') }}</p>
+        <p><strong>Location:</strong> {{ event.location }}</p>
+        
+        {% if event.description %}
+        <p>{{ event.description }}</p>
+        {% endif %}
+        
+        <div style="text-align: center;">
+            <a href="{{ rsvp_url }}" class="button">RSVP Now</a>
+        </div>
+        
+        {% if event.get_custom_fields().get('dress_code') %}
+        <p><strong>Dress Code:</strong> {{ event.get_custom_fields()['dress_code'] }}</p>
+        {% endif %}
+        
+        {% if event.get_custom_fields().get('additional_info') %}
+        <p><strong>Additional Information:</strong><br>
+        {{ event.get_custom_fields()['additional_info'] }}</p>
+        {% endif %}
+        
+        <div class="footer">
+            <p>You can update your RSVP at any time using the link above.</p>
+            <p>This invitation was sent by {{ event.organizer.name }} using RSVP Manager</p>
+        </div>
+    </div>
+</body>
+</html>

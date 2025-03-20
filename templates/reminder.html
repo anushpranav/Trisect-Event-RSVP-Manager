@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Event Reminder</h1>
+        </div>
+        
+        <p>Dear {{ guest.name }},</p>
+        
+        <p>This is a friendly reminder about the upcoming event:</p>
+        <h2>{{ event.title }}</h2>
+        
+        <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y at %I:%M %p') }}</p>
+        <p><strong>Location:</strong> {{ event.location }}</p>
+        
+        {% if guest.status == 'pending' %}
+        <p>We haven't received your RSVP yet. Please let us know if you'll be able to attend:</p>
+        <div style="text-align: center;">
+            <a href="{{ rsvp_url }}" class="button">RSVP Now</a>
+        </div>
+        {% else %}
+        <p>Your current RSVP status: <strong>{{ guest.status|title }}</strong></p>
+        <p>If you need to make any changes, please visit:</p>
+        <div style="text-align: center;">
+            <a href="{{ rsvp_url }}" class="button">Update RSVP</a>
+        </div>
+        {% endif %}
+        
+        {% if event.get_custom_fields().get('dress_code') %}
+        <p><strong>Dress Code:</strong> {{ event.get_custom_fields()['dress_code'] }}</p>
+        {% endif %}
+        
+        <div class="footer">
+            <p>This reminder was sent by {{ event.organizer.name }} using RSVP Manager</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="event-details-container">
+    <div class="event-header">
+        <h1>{{ event.title }}</h1>
+        <div class="event-actions">
+            <a href="{{ url_for('routes.manage_guests', event_id=event.id) }}" class="btn btn-primary">Manage Guests</a>
+            <button onclick="shareEvent()" class="btn btn-secondary">Share Event</button>
+        </div>
+    </div>
+    
+    <div class="event-info-grid">
+        <div class="info-card">
+            <h3>Event Details</h3>
+            <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y') }}</p>
+            <p><strong>Time:</strong> {{ event.date.strftime('%I:%M %p') }}</p>
+            <p><strong>Location:</strong> {{ event.location }}</p>
+            <p><strong>Description:</strong> {{ event.description }}</p>
+        </div>
+        
+        <div class="info-card">
+            <h3>RSVP Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-box confirmed">
+                    <span class="stat-number">{{ event.get_rsvp_stats()['confirmed'] }}</span>
+                    <span class="stat-label">Confirmed</span>
+                </div>
+                <div class="stat-box pending">
+                    <span class="stat-number">{{ event.get_rsvp_stats()['pending'] }}</span>
+                    <span class="stat-label">Pending</span>
+                </div>
+                <div class="stat-box declined">
+                    <span class="stat-number">{{ event.get_rsvp_stats()['declined'] }}</span>
+                    <span class="stat-label">Declined</span>
+                </div>
+                <div class="stat-box total">
+                    <span class="stat-number">{{ event.get_rsvp_stats()['total_attending'] }}</span>
+                    <span class="stat-label">Total Attending</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if event.get_custom_fields() %}
+    <div class="custom-fields-section">
+        <h3>Event Options</h3>
+        {% if event.get_custom_fields().get('meal_options') %}
+        <div class="field-card">
+            <h4>Meal Options</h4>
+            <ul>
+                {% for option in event.get_custom_fields()['meal_options'] %}
+                <li>{{ option }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if event.get_custom_fields().get('dress_code') %}
+        <div class="field-card">
+            <h4>Dress Code</h4>
+            <p>{{ event.get_custom_fields()['dress_code'] }}</p>
+        </div>
+        {% endif %}
+        
+        {% if event.get_custom_fields().get('additional_info') %}
+        <div class="field-card">
+            <h4>Additional Information</h4>
+            <p>{{ event.get_custom_fields()['additional_info'] }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="guest-insights">
+        <h3>Guest Insights</h3>
+        <div id="responseTimeline"></div>
+        <div id="mealPreferences"></div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+<div id="shareModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Share Event</h2>
+        <div class="share-options">
+            <div class="share-option">
+                <h4>Event Link</h4>
+                <div class="copy-link">
+                    <input type="text" readonly value="{{ request.url }}" id="eventLink">
+                    <button onclick="copyToClipboard('eventLink')" class="btn btn-secondary">Copy</button>
+                </div>
+            </div>
+            <div class="share-option">
+                <h4>QR Code</h4>
+                <div id="eventQRCode"></div>
+                <button onclick="downloadQRCode()" class="btn btn-secondary">Download QR</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timelineData = {{ analytics.timeline|tojson|safe }};
+    
+    // Convert timeline data for Chart.js
+    const labels = Object.keys(timelineData);
+    const data = Object.values(timelineData);
+    
+    // Response Timeline Chart
+    const timelineCtx = document.getElementById('responseTimeline').getContext('2d');
+    new Chart(timelineCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Responses Over Time',
+                data: data,
+                borderColor: '#4a90e2',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM D'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Responses'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

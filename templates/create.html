@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Create Event{% endblock %}
+
+{% block content %}
+<div class="create-event-container">
+    <h1>Create New Event</h1>
+    
+    <form method="POST" class="event-form">
+        <div class="form-section">
+            <h3>Basic Information</h3>
+            <div class="form-group">
+                <label for="title">Event Title</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" required></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Date & Time</label>
+                    <input type="datetime-local" id="date" name="date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Custom Options</h3>
+            <div class="form-group">
+                <label>Meal Options</label>
+                <div id="mealOptions" class="custom-options">
+                    <div class="option-row">
+                        <input type="text" name="meal_options[]" placeholder="Add meal option">
+                        <button type="button" class="btn btn-small" onclick="addMealOption()">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="dress_code">Dress Code</label>
+                <select id="dress_code" name="dress_code">
+                    <option value="">Select dress code</option>
+                    <option value="formal">Formal</option>
+                    <option value="semi-formal">Semi-Formal</option>
+                    <option value="casual">Casual</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="additional_info">Additional Information</label>
+                <textarea id="additional_info" name="additional_info" rows="3"></textarea>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>RSVP Settings</h3>
+            <div class="form-group">
+                <label for="max_guests">Maximum Guests</label>
+                <input type="number" id="max_guests" name="max_guests" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="rsvp_deadline">RSVP Deadline</label>
+                <input type="datetime-local" id="rsvp_deadline" name="rsvp_deadline">
+            </div>
+            
+            <div class="form-check">
+                <input type="checkbox" id="allow_plus_one" name="allow_plus_one">
+                <label for="allow_plus_one">Allow Plus Ones</label>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Event</button>
+            <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addMealOption() {
+    const container = document.getElementById('mealOptions');
+    const newRow = document.createElement('div');
+    newRow.className = 'option-row';
+    newRow.innerHTML = `
+        <input type="text" name="meal_options[]" placeholder="Add meal option">
+        <button type="button" class="btn btn-small btn-danger" onclick="removeMealOption(this)">-</button>
+    `;
+    container.appendChild(newRow);
+}
+
+function removeMealOption(button) {
+    button.parentElement.remove();
+}
+</script>
+{% endblock %}

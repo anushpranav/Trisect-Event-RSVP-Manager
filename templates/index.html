@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to RSVP Manager{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <h1>Welcome to RSVP Manager</h1>
+    <p>The easiest way to manage your events and track responses</p>
+    
+    {% if not current_user.is_authenticated %}
+        <div class="cta-buttons">
+            <a href="{{ url_for('routes.login') }}" class="btn btn-primary">Login</a>
+            <a href="{{ url_for('routes.register') }}" class="btn btn-secondary">Create Account</a>
+        </div>
+    {% else %}
+        <div class="cta-buttons">
+            <a href="{{ url_for('routes.dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+            <a href="{{ url_for('routes.create_event') }}" class="btn btn-secondary">Create New Event</a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="features-section">
+    <h2>Features</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <i class="fas fa-check-circle"></i>
+            <h3>One-click RSVP</h3>
+            <p>Guests can confirm their attendance instantly, no account needed</p>
+        </div>
+        <div class="feature-card">
+            <i class="fas fa-bell"></i>
+            <h3>Automatic Reminders</h3>
+            <p>Keep your guests informed with automated notifications</p>
+        </div>
+        <div class="feature-card">
+            <i class="fas fa-edit"></i>
+            <h3>Easy Updates</h3>
+            <p>Guests can modify their responses anytime</p>
+        </div>
+        <div class="feature-card">
+            <i class="fas fa-chart-bar"></i>
+            <h3>Detailed Analytics</h3>
+            <p>Track responses and plan better with insights</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

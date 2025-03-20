@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Event - {{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="edit-event-container">
+    <h1>Edit Event</h1>
+    
+    <form method="POST" class="event-form">
+        <!-- Similar to create.html but with pre-filled values -->
+        <div class="form-section">
+            <h3>Basic Information</h3>
+            <div class="form-group">
+                <label for="title">Event Title</label>
+                <input type="text" id="title" name="title" value="{{ event.title }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" required>{{ event.description }}</textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Date & Time</label>
+                    <input type="datetime-local" id="date" name="date" 
+                    value="{{ event.date.strftime('%Y-%m-%dT%H:%M') }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" value="{{ event.location }}" required>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-section">
+        <h3>Custom Options</h3>
+        <div class="form-group">
+            <label>Meal Options</label>
+            <div id="mealOptions" class="custom-options">
+                {% for meal in event.get_custom_fields().get('meal_options', []) %}
+                <div class="option-row">
+                    <input type="text" name="meal_options[]" value="{{ meal }}">
+                    <button type="button" class="btn btn-small btn-danger" onclick="removeMealOption(this)">-</button>
+                </div>
+                {% endfor %}
+                <div class="option-row">
+                    <input type="text" name="meal_options[]" placeholder="Add meal option">
+                    <button type="button" class="btn btn-small" onclick="addMealOption()">+</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="dress_code">Dress Code</label>
+            <select id="dress_code" name="dress_code">
+                <option value="">Select dress code</option>
+                <option value="formal" {% if event.get_custom_fields().get('dress_code') == 'formal' %}selected{% endif %}>Formal</option>
+                <option value="semi-formal" {% if event.get_custom_fields().get('dress_code') == 'semi-formal' %}selected{% endif %}>Semi-Formal</option>
+                <option value="casual" {% if event.get_custom_fields().get('dress_code') == 'casual' %}selected{% endif %}>Casual</option>
+                <option value="custom" {% if event.get_custom_fields().get('dress_code') == 'custom' %}selected{% endif %}>Custom</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="additional_info">Additional Information</label>
+            <textarea id="additional_info" name="additional_info" rows="3">{{ event.get_custom_fields().get('additional_info', '') }}</textarea>
+        </div>
+    </div>
+    
+    <div class="form-section">
+        <h3>RSVP Settings</h3>
+        <div class="form-check">
+            <input type="checkbox" id="allow_plus_one" name="allow_plus_one" 
+                   {% if event.get_custom_fields().get('allow_plus_one') %}checked{% endif %}>
+            <label for="allow_plus_one">Allow Plus Ones</label>
+        </div>
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('routes.event_details', event_id=event.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Event</button>
+    </div>
+</form>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+<div class="modal-content">
+    <h2>Delete Event</h2>
+    <p>Are you sure you want to delete this event? This action cannot be undone.</p>
+    <div class="modal-actions">
+        <form method="POST" action="{{ url_for('routes.delete_event', event_id=event.id) }}">
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addMealOption() {
+const container = document.getElementById('mealOptions');
+const newRow = document.createElement('div');
+newRow.className = 'option-row';
+newRow.innerHTML = `
+    <input type="text" name="meal_options[]" placeholder="Add meal option">
+    <button type="button" class="btn btn-small btn-danger" onclick="removeMealOption(this)">-</button>
+`;
+container.appendChild(newRow);
+}
+
+function removeMealOption(button) {
+button.parentElement.remove();
+}
+
+function confirmDelete() {
+document.getElementById('deleteModal').style.display = 'block';
+}
+
+function closeDeleteModal() {
+document.getElementById('deleteModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+const modal = document.getElementById('deleteModal');
+if (event.target == modal) {
+    modal.style.display = 'none';
+}
+}
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+Flask
+Flask-SQLAlchemy
+Flask-WTF
+Flask-Login
+Flask-Mail
+PyMySQL
+python-dotenv
+bcrypt
+python-dateutil
+qrcode
+Pillow
+itsdangerous
+email-validator
