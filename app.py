@@ -5,6 +5,7 @@ from routes import routes
 from reminder import init_scheduler
 from config import Config
 import bcrypt
+from flask_mail import Mail
 
 def create_app():
     app = Flask(__name__)
@@ -15,6 +16,10 @@ def create_app():
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'routes.login'
+
+    # Initialize Flask-Mail
+    mail = Mail(app)
+    app.mail = mail  # Attach mail instance to app for global access
     
     @login_manager.user_loader
     def load_user(user_id):

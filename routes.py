@@ -3,10 +3,15 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, Organizer, Event, Guest
 from qr_generator import generate_rsvp_qr
 from analytics import get_event_analytics, get_organizer_analytics
+from email_utils import send_invitation_email, send_reminder_email
 import bcrypt
 import secrets
 from datetime import datetime
 import json
+from flask_mail import Message
+from flask import current_app
+import csv
+from io import StringIO
 
 routes = Blueprint('routes', __name__)
 
@@ -132,11 +137,18 @@ def manage_guests(event_id):
         
         # Generate QR code
         qr_code = generate_rsvp_qr(new_guest.uniqueAccessToken)
-        return jsonify({
-            'success': True,
-            'guest_id': new_guest.id,
-            'rsvp_link': url_for('routes.rsvp_page', token=new_guest.uniqueAccessToken, _external=True)
-        })
+        # Send invitation email
+        if send_invitation_email(new_guest, event, current_user.email):
+            return jsonify({
+                'success': True,
+                'guest_id': new_guest.id,
+                'rsvp_link': url_for('routes.rsvp_page', token=new_guest.uniqueAccessToken, _external=True)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send invitation email'
+            }), 500
     
     guests = Guest.query.filter_by(eventId=event_id).all()
     return render_template('/guest_list.html', event=event, guests=guests)
@@ -202,3 +214,100 @@ def download_guest_qr(event_id, guest_id):
         response.headers['Content-Disposition'] = f'attachment; filename=rsvp_qr_{guest.name}.png'
         return response
     return jsonify({'error': 'Failed to generate QR code'}), 500
+
+@routes.route('/event/<int:event_id>/guests/remind', methods=['POST'])
+@login_required
+def send_bulk_reminders(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    pending_guests = [g for g in event.guests if g.status == 'pending']
+    count = 0
+    for guest in pending_guests:
+        if send_reminder_email(guest, event):
+            count += 1
+    return jsonify({'success': True, 'message': f'Reminders sent to {count} pending guests.'})
+
+@routes.route('/event/<int:event_id>/guests/export')
+@login_required
+def export_guest_list(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Create CSV data
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['Name', 'Email', 'Phone', 'Status', 'Plus Ones', 'Last Updated', 'Responses'])
+    
+    for guest in event.guests:
+        responses = guest.get_responses()
+        response_str = ', '.join([f"{k}: {v}" for k, v in responses.items()]) if responses else ''
+        cw.writerow([
+            guest.name,
+            guest.email,
+            guest.phone or '',
+            guest.status,
+            guest.plusOneCount,
+            guest.updatedAt.strftime('%Y-%m-%d %H:%M'),
+            response_str
+        ])
+    
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=guests_{event.title.replace(' ', '_')}.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+@routes.route('/event/<int:event_id>/guest/<int:guest_id>', methods=['DELETE'])
+@login_required
+def delete_guest(event_id, guest_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    guest = Guest.query.get_or_404(guest_id)
+    if guest.eventId != event_id:
+        return jsonify({'error': 'Guest not found for this event'}), 404
+    
+    db.session.delete(guest)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@routes.route('/event/<int:event_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        flash('Unauthorized access')
+        return redirect(url_for('routes.dashboard'))
+    
+    if request.method == 'POST':
+        custom_fields = {
+            'meal_options': request.form.getlist('meal_options[]'),
+            'dress_code': request.form.get('dress_code'),
+            'additional_info': request.form.get('additional_info')
+        }
+        
+        event.title = request.form.get('title')
+        event.description = request.form.get('description')
+        event.date = datetime.strptime(request.form.get('date'), '%Y-%m-%dT%H:%M')
+        event.location = request.form.get('location')
+        event.customFields = json.dumps(custom_fields)
+        
+        db.session.commit()
+        flash('Event updated successfully!')
+        return redirect(url_for('routes.event_details', event_id=event.id))
+    
+    return render_template('/edit.html', event=event)
+
+@routes.route('/event/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    db.session.delete(event)
+    db.session.commit()
+    flash('Event deleted successfully!')
+    return redirect(url_for('routes.dashboard'))

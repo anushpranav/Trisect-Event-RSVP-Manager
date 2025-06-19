@@ -1,16 +1,31 @@
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import current_app
+from flask import current_app, url_for
 from models import Event, Guest, db
+from flask_mail import Message
+from flask import render_template
+from email_utils import send_reminder_email
 
 scheduler = BackgroundScheduler()
 
 def send_reminder_email(guest):
     """Send reminder email to guest"""
-    # Implement email sending logic here
-    print(f"Sending reminder to {guest.email} for event {guest.event.title}")
-    guest.lastReminderSent = datetime.utcnow()
-    db.session.commit()
+    try:
+        app = current_app
+        mail = app.mail
+        event = guest.event
+        rsvp_url = url_for('routes.rsvp_page', token=guest.uniqueAccessToken, _external=True)
+        html = render_template('reminder.html', guest=guest, event=event, rsvp_url=rsvp_url)
+        msg = Message(
+            subject=f"Reminder: {event.title} is coming up!",
+            recipients=[guest.email],
+            html=html
+        )
+        mail.send(msg)
+        guest.lastReminderSent = datetime.utcnow()
+        db.session.commit()
+    except Exception as e:
+        print(f"Error sending reminder to {guest.email}: {e}")
 
 def check_and_send_reminders():
     """Check for upcoming events and send reminders"""
@@ -30,7 +45,9 @@ def check_and_send_reminders():
                         if days_until_event in [7, 3, 1]:
                             if not guest.lastReminderSent or \
                                (now - guest.lastReminderSent).days >= 1:
-                                send_reminder_email(guest)
+                                if send_reminder_email(guest):
+                                    guest.lastReminderSent = datetime.utcnow()
+                                    db.session.commit()
         except Exception as e:
             print(f"Reminder error: {e}")
 

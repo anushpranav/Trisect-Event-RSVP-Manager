@@ -11,3 +11,6 @@ qrcode
 Pillow
 itsdangerous
 email-validator
+APScheduler
+pandas
+cryptography
