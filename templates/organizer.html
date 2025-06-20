@@ -3,56 +3,62 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
+<div class="container">
     <div class="dashboard-header">
         <h1>Welcome, {{ current_user.name }}!</h1>
         <a href="{{ url_for('routes.create_event') }}" class="btn btn-primary">Create New Event</a>
     </div>
 
-    <div class="analytics-summary">
-        <h2>Your Analytics</h2>
-        <div class="stats-grid">
-            <div class="stat-box">
-                <h3>Total Events</h3>
-                <p>{{ analytics.total_events }}</p>
-            </div>
-            <div class="stat-box">
-                <h3>Average Response Rate</h3>
-                <p>{{ "%.1f"|format(analytics.average_response_rate * 100) }}%</p>
+    <div class="dashboard-grid">
+        <div class="analytics-summary">
+            <h2>Your Analytics</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <h3>Total Events</h3>
+                    <p>{{ analytics.total_events }}</p>
+                </div>
+                <div class="stat-box">
+                    <h3>Average Response Rate</h3>
+                    <p>{{ "%.1f"|format(analytics.average_response_rate * 100) }}%</p>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="events-section">
         <h2>Your Events</h2>
-        <div class="events-grid">
-            {% for event in events %}
-            <div class="event-card">
-                <div class="event-header">
-                    <h3>{{ event.title }}</h3>
-                    <span class="event-date">{{ event.date.strftime('%B %d, %Y') }}</span>
-                </div>
-                <div class="event-stats">
-                    <div class="stat">
-                        <span class="label">Confirmed:</span>
-                        <span class="value">{{ event.get_rsvp_stats()['confirmed'] }}</span>
+        {% if events %}
+            <div class="events-grid">
+                {% for event in events %}
+                <div class="event-card">
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <span class="event-date">{{ event.date.strftime('%B %d, %Y') }}</span>
                     </div>
-                    <div class="stat">
-                        <span class="label">Pending:</span>
-                        <span class="value">{{ event.get_rsvp_stats()['pending'] }}</span>
+                    <div class="event-stats">
+                        <div class="stat">
+                            <span class="label">Confirmed:</span>
+                            <span class="value">{{ event.get_rsvp_stats()['confirmed'] }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Pending:</span>
+                            <span class="value">{{ event.get_rsvp_stats()['pending'] }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Total Attending:</span>
+                            <span class="value">{{ event.get_rsvp_stats()['total_attending'] }}</span>
+                        </div>
                     </div>
-                    <div class="stat">
-                        <span class="label">Total Attending:</span>
-                        <span class="value">{{ event.get_rsvp_stats()['total_attending'] }}</span>
+                    <div class="event-actions">
+                        <a href="{{ url_for('routes.event_details', event_id=event.id) }}" class="btn btn-secondary">View Details</a>
+                        <a href="{{ url_for('routes.manage_guests', event_id=event.id) }}" class="btn btn-primary">Manage Guests</a>
                     </div>
                 </div>
-                <div class="event-actions">
-                    <a href="{{ url_for('routes.event_details', event_id=event.id) }}" class="btn btn-secondary">View Details</a>
-                    <a href="{{ url_for('routes.manage_guests', event_id=event.id) }}" class="btn btn-primary">Manage Guests</a>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
+        {% else %}
+            <p>You haven't created any events yet. <a href="{{ url_for('routes.create_event') }}">Create one now!</a></p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

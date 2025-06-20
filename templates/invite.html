@@ -55,6 +55,11 @@
             <a href="{{ rsvp_url }}" class="button">RSVP Now</a>
         </div>
         
+        <div style="text-align: center; margin-top: 20px;">
+            <p>Or, use this QR code for quick check-in at the event:</p>
+            <img src="cid:qrcode" alt="RSVP QR Code">
+        </div>
+        
         {% if event.get_custom_fields().get('dress_code') %}
         <p><strong>Dress Code:</strong> {{ event.get_custom_fields()['dress_code'] }}</p>
         {% endif %}

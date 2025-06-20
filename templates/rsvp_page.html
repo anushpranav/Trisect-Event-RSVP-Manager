@@ -3,7 +3,7 @@
 {% block title %}RSVP - {{ event.title }}{% endblock %}
 
 {% block content %}
-<div class="rsvp-container">
+<div class="container">
     <h1>{{ event.title }}</h1>
     <div class="event-details">
         <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y at %I:%M %p') }}</p>
@@ -17,7 +17,7 @@
         <div class="form-group">
             <label>Will you attend?</label>
             <div class="rsvp-options">
-                <button type="button" class="btn btn-success" onclick="submitRSVP('confirmed')">Yes, I'll be there!</button>
+                <button type="button" class="btn btn-success" onclick="selectRSVP('confirmed')">Yes, I'll be there!</button>
                 <button type="button" class="btn btn-danger" onclick="submitRSVP('declined')">Sorry, can't make it</button>
             </div>
         </div>
@@ -45,6 +45,10 @@
                 <textarea id="additionalNotes" name="additionalNotes"></textarea>
             </div>
             {% endif %}
+
+            <div class="form-group">
+                <button type="button" class="btn btn-primary" onclick="submitRSVP('confirmed')">Submit RSVP</button>
+            </div>
         </div>
     </form>
 </div>
@@ -52,40 +56,56 @@
 
 {% block scripts %}
 <script>
-function submitRSVP(status) {
+function selectRSVP(status) {
     const additionalOptions = document.getElementById('additionalOptions');
     if (status === 'confirmed') {
         additionalOptions.style.display = 'block';
-        if (document.getElementById('plusOne').value === '') {
-            return;
-        }
+    } else {
+        additionalOptions.style.display = 'none';
     }
+}
 
-    const responses = {
-        meal_choice: document.getElementById('mealChoice')?.value,
-        additional_notes: document.getElementById('additionalNotes')?.value
-    };
+function submitRSVP(status) {
+    let payload;
+
+    if (status === 'confirmed') {
+        const responses = {
+            meal_choice: document.getElementById('mealChoice')?.value,
+            additional_notes: document.getElementById('additionalNotes')?.value
+        };
+        payload = {
+            status: 'confirmed',
+            plus_one_count: parseInt(document.getElementById('plusOne').value) || 0,
+            responses: responses
+        };
+    } else {
+        payload = {
+            status: 'declined',
+            plus_one_count: 0,
+            responses: {}
+        };
+    }
 
     fetch(window.location.href, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            status: status,
-            plus_one_count: status === 'confirmed' ? 
-                parseInt(document.getElementById('plusOne').value) : 0,
-            responses: responses
-        })
+        body: JSON.stringify(payload)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Thank you for your response!');
-            additionalOptions.style.display = 'none';
+            const container = document.querySelector('.rsvp-container');
+            container.innerHTML = '<h1>Thank you for your response!</h1><p>Your RSVP has been recorded.</p>';
+        } else {
+            alert('There was an error submitting your RSVP. Please try again.');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An unexpected error occurred. Please try again.');
+    });
 }
 </script>
 {% endblock %}

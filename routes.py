@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, Organizer, Event, Guest
 from qr_generator import generate_rsvp_qr
 from analytics import get_event_analytics, get_organizer_analytics
-from email_utils import send_invitation_email, send_reminder_email
+from email_utils import send_invitation_email, send_reminder_email, send_password_reset_email
 import bcrypt
 import secrets
 from datetime import datetime
@@ -12,6 +12,7 @@ from flask_mail import Message
 from flask import current_app
 import csv
 from io import StringIO
+from itsdangerous import URLSafeTimedSerializer
 
 routes = Blueprint('routes', __name__)
 
@@ -135,20 +136,26 @@ def manage_guests(event_id):
         db.session.add(new_guest)
         db.session.commit()
         
-        # Generate QR code
-        qr_code = generate_rsvp_qr(new_guest.uniqueAccessToken)
-        # Send invitation email
-        if send_invitation_email(new_guest, event, current_user.email):
-            return jsonify({
-                'success': True,
-                'guest_id': new_guest.id,
-                'rsvp_link': url_for('routes.rsvp_page', token=new_guest.uniqueAccessToken, _external=True)
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to send invitation email'
-            }), 500
+        qr_image_io = None
+        if data.get('sendInvite', False):
+            # Generate QR code
+            qr_image_io = generate_rsvp_qr(new_guest.uniqueAccessToken)
+            # Send invitation email
+            send_invitation_email(new_guest, event, qr_image_io=qr_image_io)
+            
+        return jsonify({
+            'success': True,
+            'guest': {
+                'id': new_guest.id,
+                'name': new_guest.name,
+                'email': new_guest.email,
+                'phone': new_guest.phone,
+                'status': new_guest.status,
+                'plusOneCount': new_guest.plusOneCount,
+                'updatedAt': new_guest.updatedAt.strftime('%Y-%m-%d %H:%M'),
+                'uniqueAccessToken': new_guest.uniqueAccessToken
+            }
+        })
     
     guests = Guest.query.filter_by(eventId=event_id).all()
     return render_template('/guest_list.html', event=event, guests=guests)
@@ -258,6 +265,33 @@ def export_guest_list(event_id):
     output.headers["Content-type"] = "text/csv"
     return output
 
+@routes.route('/event/<int:event_id>/guest/<int:guest_id>', methods=['GET', 'PUT'])
+@login_required
+def manage_single_guest(event_id, guest_id):
+    event = Event.query.get_or_404(event_id)
+    if event.organizerId != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    guest = Guest.query.get_or_404(guest_id)
+    if guest.eventId != event_id:
+        return jsonify({'error': 'Guest not found for this event'}), 404
+
+    if request.method == 'GET':
+        return jsonify({
+            'id': guest.id,
+            'name': guest.name,
+            'email': guest.email,
+            'phone': guest.phone
+        })
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        guest.name = data.get('name', guest.name)
+        guest.email = data.get('email', guest.email)
+        guest.phone = data.get('phone', guest.phone)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Guest updated successfully.'})
+
 @routes.route('/event/<int:event_id>/guest/<int:guest_id>', methods=['DELETE'])
 @login_required
 def delete_guest(event_id, guest_id):
@@ -311,3 +345,51 @@ def delete_event(event_id):
     db.session.commit()
     flash('Event deleted successfully!')
     return redirect(url_for('routes.dashboard'))
+
+@routes.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        # Here you could add logic to send the message via email or store it
+        flash('Thank you for contacting us! We will get back to you soon.')
+        return redirect(url_for('routes.contact'))
+    return render_template('contact.html')
+
+@routes.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = Organizer.query.filter_by(email=email).first()
+        if user:
+            s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+            token = s.dumps(user.email, salt='password-reset-salt')
+            send_password_reset_email(user.email, token)
+            flash('A password reset link has been sent to your email.')
+        else:
+            flash('If that email is registered, a reset link has been sent.')
+        return redirect(url_for('routes.forgot_password'))
+    return render_template('forgot_password.html')
+
+@routes.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        email = s.loads(token, salt='password-reset-salt', max_age=3600)
+    except Exception:
+        flash('The password reset link is invalid or has expired.')
+        return redirect(url_for('routes.forgot_password'))
+    user = Organizer.query.filter_by(email=email).first()
+    if not user:
+        flash('Invalid user.')
+        return redirect(url_for('routes.forgot_password'))
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password:
+            import bcrypt
+            hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            user.passwordHash = hashed_pw.decode('utf-8')
+            db.session.commit()
+            flash('Your password has been reset. You can now log in.')
+            return redirect(url_for('routes.login'))
+        else:
+            flash('Please enter a new password.')
+    return render_template('reset_password.html', token=token)

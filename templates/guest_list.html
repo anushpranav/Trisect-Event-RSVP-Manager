@@ -64,11 +64,11 @@
             <table class="guests-table" id="guestsTable">
                 <thead>
                     <tr>
-                        <th onclick="sortTable(0)">Name ↕</th>
-                        <th onclick="sortTable(1)">Email ↕</th>
-                        <th onclick="sortTable(2)">Status ↕</th>
-                        <th onclick="sortTable(3)">Plus Ones ↕</th>
-                        <th onclick="sortTable(4)">Last Updated ↕</th>
+                        <th onclick="sortTable(0)">Name &#8597;</th>
+                        <th onclick="sortTable(1)">Email &#8597;</th>
+                        <th onclick="sortTable(2)">Status &#8597;</th>
+                        <th onclick="sortTable(3)">Plus Ones &#8597;</th>
+                        <th onclick="sortTable(4)">Last Updated &#8597;</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -86,18 +86,18 @@
                         <td>{{ guest.updatedAt.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
                             <div class="guest-actions">
-                                <button onclick="viewQRCode({{ guest.id }})" class="btn btn-icon" title="View QR Code">
-                                    <i class="fas fa-qrcode"></i>
+                                <button onclick="viewQRCode({{ guest.id }})" class="btn btn-sm btn-outline" title="View QR Code">
+                                    <i class="fas fa-qrcode"></i> QR Code
                                 </button>
                                 <button onclick="copyRSVPLink('{{ url_for('routes.rsvp_page', token=guest.uniqueAccessToken, _external=True) }}')" 
-                                        class="btn btn-icon" title="Copy RSVP Link">
-                                    <i class="fas fa-link"></i>
+                                        class="btn btn-sm btn-outline" title="Copy RSVP Link">
+                                    <i class="fas fa-link"></i> Link
                                 </button>
-                                <button onclick="editGuest({{ guest.id }})" class="btn btn-icon" title="Edit Guest">
-                                    <i class="fas fa-edit"></i>
+                                <button onclick="editGuest({{ guest.id }})" class="btn btn-sm btn-outline" title="Edit Guest">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button onclick="deleteGuest({{ guest.id }})" class="btn btn-icon btn-danger" title="Delete Guest">
-                                    <i class="fas fa-trash"></i>
+                                <button onclick="deleteGuest({{ guest.id }})" class="btn btn-sm btn-danger" title="Delete Guest">
+                                    <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
                         </td>
@@ -136,6 +136,35 @@
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary">Add Guest</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addGuestModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Guest Modal -->
+<div id="editGuestModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Guest</h2>
+            <span class="close" onclick="closeModal('editGuestModal')">&times;</span>
+        </div>
+        <form id="editGuestForm" onsubmit="return updateGuest(event)">
+            <input type="hidden" id="editGuestId" name="guestId">
+            <div class="form-group">
+                <label for="editGuestName">Name *</label>
+                <input type="text" id="editGuestName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="editGuestEmail">Email *</label>
+                <input type="email" id="editGuestEmail" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="editGuestPhone">Phone (optional)</label>
+                <input type="tel" id="editGuestPhone" name="phone">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editGuestModal')">Cancel</button>
             </div>
         </form>
     </div>
@@ -352,6 +381,52 @@ async function sendBulkReminders() {
     } catch (error) {
         showToast('Failed to send reminders', 'error');
     }
+}
+
+async function editGuest(guestId) {
+    try {
+        const response = await fetch(`/event/{{ event.id }}/guest/${guestId}`);
+        if (!response.ok) throw new Error('Failed to fetch guest details.');
+        
+        const guest = await response.json();
+        
+        document.getElementById('editGuestId').value = guest.id;
+        document.getElementById('editGuestName').value = guest.name;
+        document.getElementById('editGuestEmail').value = guest.email;
+        document.getElementById('editGuestPhone').value = guest.phone || '';
+        
+        document.getElementById('editGuestModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error opening edit modal:', error);
+        // You can add a user-facing error message here
+    }
+}
+
+async function updateGuest(event) {
+    event.preventDefault();
+    const form = event.target;
+    const guestId = form.elements['editGuestId'].value;
+    const data = {
+        name: form.elements['editGuestName'].value,
+        email: form.elements['editGuestEmail'].value,
+        phone: form.elements['editGuestPhone'].value,
+    };
+
+    try {
+        const response = await fetch(`/event/{{ event.id }}/guest/${guestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) throw new Error('Failed to update guest.');
+
+        closeModal('editGuestModal');
+        location.reload(); // Refresh to show updated data
+    } catch (error) {
+        console.error('Error updating guest:', error);
+    }
+    return false; // Prevent traditional form submission
 }
 </script>
 {% endblock %}

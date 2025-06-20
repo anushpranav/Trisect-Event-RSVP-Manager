@@ -6,6 +6,7 @@ from reminder import init_scheduler
 from config import Config
 import bcrypt
 from flask_mail import Mail
+from datetime import datetime, timezone
 
 def create_app():
     app = Flask(__name__)
@@ -28,12 +29,16 @@ def create_app():
     # Register blueprints
     app.register_blueprint(routes)
     
+    @app.context_processor
+    def inject_now():
+        return {'now': datetime.now(timezone.utc)}
+    
     # Create database tables
     with app.app_context():
         try:
             db.create_all()
             # Create admin account if it doesn't exist
-            admin_email = "anushpranav@admin.com"
+            admin_email = "eventrsvpmanager@gmail.com"
             admin = Organizer.query.filter_by(email=admin_email).first()
             if not admin:
                 hashed_pw = bcrypt.hashpw(Config.ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt())

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .button { display: inline-block; padding: 10px 20px; background-color: #4a90e2; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Password Reset Request</h2>
+        <p>We received a request to reset your password for Trisect RSVP Manager.</p>
+        <p>If you made this request, click the button below to reset your password. This link will expire in 1 hour.</p>
+        <a href="{{ reset_url }}" class="button">Reset Password</a>
+        <p>If you did not request a password reset, you can safely ignore this email.</p>
+        <p>Thank you,<br>Trisect RSVP Manager Team</p>
+    </div>
+</body>
+</html> 
