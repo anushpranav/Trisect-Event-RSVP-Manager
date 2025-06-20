@@ -14,3 +14,4 @@ email-validator
 APScheduler
 pandas
 cryptography
+gunicorn
