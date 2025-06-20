@@ -1,15 +1,18 @@
-# Event RSVP Manager
+# Trisect RSVP Manager
 
-A comprehensive web application for managing event RSVPs with features like one-click RSVP, automatic reminders, QR codes, and detailed analytics.
+A modern web application for managing event RSVPs with a beautiful, wide UI, one-click RSVP, password reset, inline QR codes in emails, analytics, and more.
 
 ## Features
 
-✅ **One-click RSVP** – Guests can confirm their attendance instantly, with no account needed  
-✅ **Automatic reminders** – Sends alerts to ensure guests don't forget to RSVP or attend  
+✅ **One-click RSVP** – Guests can confirm attendance instantly, no account needed  
+✅ **Automatic reminders** – Sends alerts so guests don't forget to RSVP or attend  
 ✅ **Easy updates** – Attendees can change their response or meal preference anytime  
-✅ **Organizer dashboard** – A clear and organized way to track RSVPs and guest details  
-✅ **QR codes and links** – Makes it easy to share invitations  
-✅ **Guest insights** – Helps organizers understand RSVP trends for better planning  
+✅ **Organizer dashboard** – Track RSVPs, guests, and analytics in a wide, modern UI  
+✅ **QR codes and links** – Share invitations with unique links and inline QR codes in emails  
+✅ **Password reset** – Secure "Forgot Password" flow for organizers  
+✅ **Guest insights** – Visual analytics and response trends  
+✅ **Custom event fields** – Meal options, dress code, and more  
+✅ **Mobile-friendly** – Responsive design for all devices
 
 ## Tech Stack
 
@@ -62,6 +65,8 @@ A comprehensive web application for managing event RSVPs with features like one-
    MAIL_USERNAME=your_email@gmail.com
    MAIL_PASSWORD=your_app_password
    MAIL_DEFAULT_SENDER=your_email@gmail.com
+   # Flask secret key
+   SECRET_KEY=your_secret_key
    ```
 
 4. **Set up the database**
@@ -78,14 +83,15 @@ A comprehensive web application for managing event RSVPs with features like one-
 ### For Organizers
 
 1. **Register/Login**: Create an account or login with existing credentials
-2. **Create Events**: Set up events with details, custom fields, and RSVP settings
-3. **Add Guests**: Invite guests by email - they'll receive automatic invitations
-4. **Manage RSVPs**: View responses, send reminders, and track attendance
-5. **Analytics**: Monitor response rates and guest insights
+2. **Forgot Password**: Use the "Forgot Password?" link to reset your password securely
+3. **Create Events**: Set up events with details, custom fields, and RSVP settings
+4. **Add Guests**: Invite guests by email – they'll receive invitations with RSVP links and QR codes
+5. **Manage RSVPs**: View responses, send reminders, and track attendance
+6. **Analytics**: Monitor response rates and guest insights in a wide, modern dashboard
 
 ### For Guests
 
-1. **Receive Invitation**: Get an email with a unique RSVP link
+1. **Receive Invitation**: Get an email with a unique RSVP link and inline QR code
 2. **One-click RSVP**: Click the link and respond instantly (no account needed)
 3. **Update Response**: Modify your RSVP or meal preferences anytime
 4. **QR Code**: Use the QR code for easy access to your RSVP page
@@ -110,35 +116,14 @@ Update the `MAIL_SERVER`, `MAIL_PORT`, and other settings in your `.env` file ac
 4. **Static Files**: Serve static files through a web server (nginx)
 5. **WSGI**: Use a production WSGI server (gunicorn, uwsgi)
 
-### Example Deployment with Gunicorn
-```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:8000 app:create_app()
-```
-
-## Project Structure
-
-```
-Event-RSVP-Manager/
-├── app.py                 # Main application file
-├── config.py             # Configuration settings
-├── models.py             # Database models
-├── routes.py             # Flask routes and views
-├── reminder.py           # Email reminder system
-├── qr_generator.py       # QR code generation
-├── analytics.py          # Analytics and reporting
-├── requirements.txt      # Python dependencies
-├── static/               # Static files (CSS, JS)
-├── templates/            # HTML templates
-└── README.md            # This file
-```
-
 ## API Endpoints
 
 ### Authentication
 - `POST /login` - User login
 - `POST /register` - User registration
 - `GET /logout` - User logout
+- `GET, POST /forgot-password` - Request password reset
+- `GET, POST /reset-password/<token>` - Reset password
 
 ### Events
 - `GET /dashboard` - Organizer dashboard
@@ -171,4 +156,4 @@ This project is licensed under the MIT License.
 
 ## Support
 
-For support or questions, please open an issue in the repository.
+For support or questions, please open an issue in the repository or email eventrsvpmanager@gmail.com.

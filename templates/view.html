@@ -3,7 +3,7 @@
 {% block title %}{{ event.title }}{% endblock %}
 
 {% block content %}
-<div class="event-details-container">
+<div class="container">
     <div class="event-header">
         <h1>{{ event.title }}</h1>
         <div class="event-actions">
@@ -46,7 +46,6 @@
     
     {% if event.get_custom_fields() %}
     <div class="custom-fields-section">
-        <h3>Event Options</h3>
         {% if event.get_custom_fields().get('meal_options') %}
         <div class="field-card">
             <h4>Meal Options</h4>
