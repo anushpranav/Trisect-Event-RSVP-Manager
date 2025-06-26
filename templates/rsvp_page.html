@@ -86,6 +86,12 @@ function submitRSVP(status) {
         };
     }
 
+    // Show loading state
+    const submitButton = event.target;
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Submitting...';
+    submitButton.disabled = true;
+
     fetch(window.location.href, {
         method: 'POST',
         headers: {
@@ -93,18 +99,28 @@ function submitRSVP(status) {
         },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            const container = document.querySelector('.rsvp-container');
+            const container = document.querySelector('.container');
             container.innerHTML = '<h1>Thank you for your response!</h1><p>Your RSVP has been recorded.</p>';
         } else {
-            alert('There was an error submitting your RSVP. Please try again.');
+            alert(data.error || 'There was an error submitting your RSVP. Please try again.');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An unexpected error occurred. Please try again.');
+        alert('An unexpected error occurred. Please try again. If the problem persists, please contact the event organizer.');
+    })
+    .finally(() => {
+        // Reset button state
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
     });
 }
 </script>

@@ -163,20 +163,32 @@ def manage_guests(event_id):
 # RSVP handling
 @routes.route('/rsvp/<token>', methods=['GET', 'POST'])
 def rsvp_page(token):
-    guest = Guest.query.filter_by(uniqueAccessToken=token).first_or_404()
-    event = guest.event
-    
-    if request.method == 'POST':
-        data = request.get_json()
-        guest.update_status(
-            status=data['status'],
-            plus_one_count=data.get('plus_one_count', 0),
-            responses=data.get('responses', {})
-        )
-        db.session.commit()
-        return jsonify({'success': True})
-    
-    return render_template('/rsvp_page.html', guest=guest, event=event)
+    try:
+        guest = Guest.query.filter_by(uniqueAccessToken=token).first_or_404()
+        event = guest.event
+        
+        if request.method == 'POST':
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'success': False, 'error': 'Invalid request data'}), 400
+                
+                guest.update_status(
+                    status=data['status'],
+                    plus_one_count=data.get('plus_one_count', 0),
+                    responses=data.get('responses', {})
+                )
+                db.session.commit()
+                return jsonify({'success': True})
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error updating RSVP: {e}")
+                return jsonify({'success': False, 'error': 'Failed to update RSVP'}), 500
+        
+        return render_template('/rsvp_page.html', guest=guest, event=event)
+    except Exception as e:
+        print(f"Error in RSVP page: {e}")
+        return jsonify({'success': False, 'error': 'Invalid RSVP link'}), 404
 
 @routes.route('/event/<int:event_id>/guest/<int:guest_id>/qr')
 @login_required
