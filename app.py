@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 import os
 
 def create_app():
+    load_dotenv()  # Load environment variables at the very beginning
+    
     app = Flask(__name__)
     app.config.from_object(Config)
     
@@ -39,25 +41,32 @@ def create_app():
     with app.app_context():
         try:
             db.create_all()
-            # Create admin account if it doesn't exist
-            admin_email = "eventrsvpmanager@gmail.com"
-            admin = Organizer.query.filter_by(email=admin_email).first()
-            if not admin:
-                hashed_pw = bcrypt.hashpw(Config.ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt())
-                admin = Organizer(
-                    name="Admin",
-                    email=admin_email,
-                    passwordHash=hashed_pw.decode('utf-8')
-                )
-                db.session.add(admin)
-                db.session.commit()
+            # Create admin account if it doesn't exist, using environment variables
+            admin_email = os.getenv('ADMIN_EMAIL')
+            admin_password = os.getenv('ADMIN_PASSWORD')
+            
+            if admin_email and admin_password:
+                admin = Organizer.query.filter_by(email=admin_email).first()
+                if not admin:
+                    hashed_pw = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+                    admin = Organizer(
+                        name="Admin",
+                        email=admin_email,
+                        passwordHash=hashed_pw.decode('utf-8'),
+                        is_admin=True
+                    )
+                    db.session.add(admin)
+                    db.session.commit()
+                elif not admin.is_admin:
+                    # If admin exists but is not marked as admin, update them
+                    admin.is_admin = True
+                    db.session.commit()
         except Exception as e:
             print(f"Database initialization error: {e}")
     
     # Initialize scheduler with app context
     init_scheduler(app)
     
-    load_dotenv()
     GOOGLE_ANALYTICS_ID = os.getenv('GOOGLE_ANALYTICS_ID')
 
     @app.context_processor

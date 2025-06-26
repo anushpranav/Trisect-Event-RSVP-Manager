@@ -12,12 +12,10 @@ class Organizer(db.Model, UserMixin):
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
     passwordHash = db.Column(db.String(255), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     createdAt = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
     
     events = db.relationship('Event', backref='organizer', lazy=True)
-    
-    def is_admin(self):
-        return False
 
 class Event(db.Model):
     __tablename__ = 'Events'

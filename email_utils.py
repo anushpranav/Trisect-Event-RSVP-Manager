@@ -79,4 +79,43 @@ def send_password_reset_email(email, token):
         return True
     except Exception as e:
         print(f"Error sending password reset to {email}: {e}")
+        return False
+
+def send_contact_email(name, user_email, message):
+    """Send the contact form submission to the admin."""
+    try:
+        app = current_app
+        mail = app.mail
+        
+        # The email is sent to the administrator's email, configured as MAIL_USERNAME
+        admin_email = app.config['MAIL_USERNAME']
+        
+        # To make it clear who sent the message, we set the sender's email as a reply-to address
+        # and include their name in the email body.
+        subject = f"New Contact Form Submission from {name}"
+        
+        html_body = f"""
+        <p>You have a new contact form submission from:</p>
+        <ul>
+            <li><b>Name:</b> {name}</li>
+            <li><b>Email:</b> {user_email}</li>
+        </ul>
+        <p><b>Message:</b></p>
+        <p>{message}</p>
+        """
+        
+        sender_display = f"Trisect RSVP Manager <{app.config['MAIL_USERNAME']}>"
+
+        msg = Message(
+            subject=subject,
+            sender=sender_display,
+            recipients=[admin_email],
+            html=html_body,
+            reply_to=user_email
+        )
+        
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending contact form email: {e}")
         return False 

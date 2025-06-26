@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, Organizer, Event, Guest
 from qr_generator import generate_rsvp_qr
 from analytics import get_event_analytics, get_organizer_analytics
-from email_utils import send_invitation_email, send_reminder_email, send_password_reset_email
+from email_utils import send_invitation_email, send_reminder_email, send_password_reset_email, send_contact_email
 import bcrypt
 import secrets
 from datetime import datetime
@@ -13,8 +13,18 @@ from flask import current_app
 import csv
 from io import StringIO
 from itsdangerous import URLSafeTimedSerializer
+from functools import wraps
 
 routes = Blueprint('routes', __name__)
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('You do not have permission to access this page.', 'error')
+            return redirect(url_for('routes.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Index route
 @routes.route('/')
@@ -110,7 +120,7 @@ def create_event():
 @login_required
 def event_details(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         flash('Unauthorized access')
         return redirect(url_for('routes.dashboard'))
         
@@ -121,7 +131,7 @@ def event_details(event_id):
 @login_required
 def manage_guests(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
         
     if request.method == 'POST':
@@ -194,7 +204,7 @@ def rsvp_page(token):
 @login_required
 def get_guest_qr(event_id, guest_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
         
     guest = Guest.query.get_or_404(guest_id)
@@ -215,7 +225,7 @@ def get_guest_qr(event_id, guest_id):
 @login_required
 def download_guest_qr(event_id, guest_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
         
     guest = Guest.query.get_or_404(guest_id)
@@ -238,7 +248,7 @@ def download_guest_qr(event_id, guest_id):
 @login_required
 def send_bulk_reminders(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     data = request.get_json()
     recipient_type = data.get('recipientType', 'pending')
@@ -258,7 +268,7 @@ def send_bulk_reminders(event_id):
 @login_required
 def export_guest_list(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     # Create CSV data
@@ -288,7 +298,7 @@ def export_guest_list(event_id):
 @login_required
 def manage_single_guest(event_id, guest_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     guest = Guest.query.get_or_404(guest_id)
@@ -315,7 +325,7 @@ def manage_single_guest(event_id, guest_id):
 @login_required
 def delete_guest(event_id, guest_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     guest = Guest.query.get_or_404(guest_id)
@@ -330,7 +340,7 @@ def delete_guest(event_id, guest_id):
 @login_required
 def edit_event(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         flash('Unauthorized access')
         return redirect(url_for('routes.dashboard'))
     
@@ -357,7 +367,7 @@ def edit_event(event_id):
 @login_required
 def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.organizerId != current_user.id:
+    if not current_user.is_admin and event.organizerId != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     db.session.delete(event)
@@ -368,8 +378,15 @@ def delete_event(event_id):
 @routes.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        # Here you could add logic to send the message via email or store it
-        flash('Thank you for contacting us! We will get back to you soon.')
+        name = request.form.get('name')
+        email = request.form.get('email')
+        message = request.form.get('message')
+        
+        if send_contact_email(name, email, message):
+            flash('Thank you for contacting us! We will get back to you soon.')
+        else:
+            flash('Sorry, there was an error sending your message. Please try again later.', 'error')
+            
         return redirect(url_for('routes.contact'))
     return render_template('contact.html')
 
@@ -412,3 +429,24 @@ def reset_password(token):
         else:
             flash('Please enter a new password.')
     return render_template('reset_password.html', token=token)
+
+# Admin Routes
+@routes.route('/admin')
+@login_required
+@admin_required
+def admin_index():
+    return redirect(url_for('routes.admin_dashboard'))
+
+@routes.route('/admin/dashboard')
+@login_required
+@admin_required
+def admin_dashboard():
+    organizers = Organizer.query.order_by(Organizer.name).all()
+    return render_template('admin/dashboard.html', organizers=organizers)
+
+@routes.route('/admin/organizer/<int:organizer_id>')
+@login_required
+@admin_required
+def admin_organizer_events(organizer_id):
+    organizer = Organizer.query.get_or_404(organizer_id)
+    return render_template('admin/organizer_events.html', organizer=organizer)

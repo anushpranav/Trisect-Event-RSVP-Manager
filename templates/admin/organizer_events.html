@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Events by {{ organizer.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('routes.admin_dashboard') }}" class="btn btn-secondary mb-3">&larr; Back to Admin Dashboard</a>
+    <h2>Events by {{ organizer.name }}</h2>
+    <p>Viewing all events created by <strong>{{ organizer.email }}</strong>.</p>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>{{ organizer.events|length }} Events Found</h3>
+        </div>
+        <div class="card-body">
+            {% if organizer.events %}
+                <ul class="list-group">
+                    {% for event in organizer.events %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('routes.event_details', event_id=event.id) }}">
+                                {{ event.title }}
+                            </a>
+                            <span class="badge">{{ event.date.strftime('%Y-%m-%d') }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>This organizer has not created any events yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

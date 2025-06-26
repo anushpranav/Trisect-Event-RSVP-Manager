@@ -26,6 +26,9 @@
         </div>
         <div class="navbar-menu">
             {% if current_user.is_authenticated %}
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('routes.admin_dashboard') }}" class="{% if request.endpoint.startswith('routes.admin_') %}active{% endif %}">Admin Dashboard</a>
+                {% endif %}
                 <a href="{{ url_for('routes.dashboard') }}" class="{% if request.endpoint == 'routes.dashboard' %}active{% endif %}">Dashboard</a>
                 <a href="{{ url_for('routes.create_event') }}" class="{% if request.endpoint == 'routes.create_event' %}active{% endif %}">Create Event</a>
                 <a href="{{ url_for('routes.logout') }}">Logout</a>
