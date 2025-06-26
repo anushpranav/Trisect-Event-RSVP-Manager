@@ -7,6 +7,8 @@ from config import Config
 import bcrypt
 from flask_mail import Mail
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+import os
 
 def create_app():
     app = Flask(__name__)
@@ -54,6 +56,13 @@ def create_app():
     
     # Initialize scheduler with app context
     init_scheduler(app)
+    
+    load_dotenv()
+    GOOGLE_ANALYTICS_ID = os.getenv('GOOGLE_ANALYTICS_ID')
+
+    @app.context_processor
+    def inject_google_analytics_id():
+        return dict(google_analytics_id=GOOGLE_ANALYTICS_ID)
     
     return app
 
