@@ -589,6 +589,7 @@ h6 { font-size: 1rem; }
 /* Table Styles */
 .guests-table {
     width: 100%;
+    min-width: 1100px;
     border-collapse: collapse;
     background: white;
     border-radius: var(--radius-lg);
@@ -608,6 +609,7 @@ h6 { font-size: 1rem; }
     color: var(--gray-800);
     border-bottom: 2px solid var(--gray-200);
     cursor: pointer;
+    text-align: center;
 }
 
 .guests-table tr {
