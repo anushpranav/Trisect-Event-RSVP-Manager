@@ -240,12 +240,19 @@ def send_bulk_reminders(event_id):
     event = Event.query.get_or_404(event_id)
     if event.organizerId != current_user.id:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-    pending_guests = [g for g in event.guests if g.status == 'pending']
+    data = request.get_json()
+    recipient_type = data.get('recipientType', 'pending')
+    if recipient_type == 'pending':
+        guests = [g for g in event.guests if g.status == 'pending']
+    elif recipient_type == 'confirmed':
+        guests = [g for g in event.guests if g.status == 'confirmed']
+    else:
+        guests = [g for g in event.guests if g.status in ('pending', 'confirmed')]
     count = 0
-    for guest in pending_guests:
-        if send_reminder_email(guest, event):
+    for guest in guests:
+        if send_reminder_email(guest, event, recipient_type=guest.status):
             count += 1
-    return jsonify({'success': True, 'message': f'Reminders sent to {count} pending guests.'})
+    return jsonify({'success': True, 'message': f'Reminders sent to {count} {recipient_type} guests.'})
 
 @routes.route('/event/<int:event_id>/guests/export')
 @login_required

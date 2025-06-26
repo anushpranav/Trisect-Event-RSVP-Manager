@@ -34,19 +34,24 @@ def send_invitation_email(guest, event, qr_image_io=None):
         print(f"Error sending invite to {guest.email}: {e}")
         return False
 
-def send_reminder_email(guest, event):
-    """Send reminder email to guest using the dedicated RSVP email as sender."""
+def send_reminder_email(guest, event, recipient_type=None):
+    """Send reminder email to guest using the dedicated RSVP email as sender. recipient_type can be 'pending' or 'confirmed'."""
     try:
         app = current_app
         mail = app.mail
         rsvp_url = url_for('routes.rsvp_page', token=guest.uniqueAccessToken, _external=True)
-        html = render_template('reminder.html', guest=guest, event=event, rsvp_url=rsvp_url)
-        
-        # Use a friendly display name with the email
+        # Use custom subject and message based on recipient_type or guest.status
+        status = recipient_type or guest.status
+        if status == 'pending':
+            subject = f"Reminder: Your RSVP is still pending for {event.title}"
+        elif status == 'confirmed':
+            subject = f"Don't forget about {event.title}!"
+        else:
+            subject = f"Reminder: {event.title} is coming up!"
+        html = render_template('reminder.html', guest=guest, event=event, rsvp_url=rsvp_url, recipient_type=status)
         sender = f"RSVP Manager <{app.config['MAIL_USERNAME']}>"
-        
         msg = Message(
-            subject=f"Reminder: {event.title} is coming up!",
+            subject=subject,
             sender=sender,
             recipients=[guest.email],
             html=html
