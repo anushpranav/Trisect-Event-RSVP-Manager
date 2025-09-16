@@ -17,7 +17,7 @@ A modern web application for managing event RSVPs with a beautiful, wide UI, one
 ## Tech Stack
 
 - **Backend**: Flask, SQLAlchemy, Flask-Login, Flask-Mail
-- **Database**: MySQL
+- **Database**: MySQL (Hosted on Clever Cloud)
 - **Frontend**: HTML, CSS, JavaScript (Vanilla)
 - **Email**: Flask-Mail with SMTP
 - **Scheduling**: APScheduler for automatic reminders
